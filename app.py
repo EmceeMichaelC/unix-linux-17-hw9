@@ -9,7 +9,7 @@ from flask import Flask, abort, request, jsonify, make_response
 app = Flask(__name__)
 app.debug = False
 
-allowed_actions = ['start', 'stop', 'restart', 'status']
+allowed_actions = ['start', 'stop', 'restart']
 
 @app.errorhandler(InvalidUsage)
 def invalid_request(error):
@@ -23,33 +23,31 @@ def invalid_request(error):
     response.status_code = error.status_code
     return response
 
-@app.route('/v1/services/<action>', methods=['PUT', 'GET'])
-def services(action):
+@app.route('/v1/services/<service>', methods=['GET'])
+def serviceStatus(service):
+    """
+    Get status of a service.
+    :type service: string
+    :param service: name of service.
+    """
+    return getResponse('status', service)
+
+@app.route('/v1/services/<service>/<action>', methods=['PUT'])
+def serviceAction(service, action):
     """
     Services API entry point
     :type action: string
     :param action: action to perform.
-                   start, stop, restart, status
-    expected API json params:
-        :type service: string
-        :param service: name of service to perform action on
+                   start, stop, restart
+    :param service: name of service to perform action on
     """
     # quick action validation
     if not action in allowed_actions:
         abort(404)
 
-    ## parse input ##
-    # grab service from json payload
-    try:
-        service = request.json['service']
-    # Exception if service payload is missing
-    except Exception, err:
-        # debug mode raise exception for stack trace visibility
-        if app.debug:
-            raise
-        raise InvalidUsage(output='no json parameter service',
-                           success=False, status_code=400)
+    return getResponse(action, service)
 
+def getResponse(action, service):
     ## make our service call ##
     # call service_mgmt and obtain output and return code
     try:
@@ -61,7 +59,6 @@ def services(action):
         # set return values to failed if exception occurs
         output = "{0}".format(err)
         success = False
-
 
     ## format and send our response back to client ##
     # generate our response
