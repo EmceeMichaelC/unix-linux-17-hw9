@@ -18,17 +18,43 @@ def service_mgmt(action, service):
     command = ['service', service, action]
 
     # execute command using Popen
-    p = Popen(command, stdout=PIPE, stderr=PIPE)
+    p = Popen(command, stdout=PIPE, stderr=PIPE, shell=False)
     # poll the subprocess call for data (exit code, stderr/stdout, etc.)
     while not isinstance(p.returncode, int):
         p.poll()
 
+    sout = []
+    for line in p.stdout.readlines():
+        sout.append(line.strip())
+    
+    serr = []
+    for line in p.stderr.readlines():
+        serr.append(line.strip())
+
+    statusCode = {
+        0: 'success',
+        1: 'notfound',
+        2: 'err'
+        }
+
+    returnCode = p.returncode
+    
     # successful command
-    if p.returncode == 0:
-        success = True
+    if returnCode == 0:
+        status = statusCode[0]
+    elif returnCode == 3:
+        #check stdout to see if service is 'not found'.
+        if sout[1].find('not-found') >= 0:
+            status = statusCode[1]
+        #check if it is loaded, but not started.
+        elif sout[1].find('loaded') >= 0:
+            status = statusCode[0]
+    #not found
+    elif returnCode == 5:
+        status = statusCode[1]
     # unsuccessful command
     else:
-        success = False
+        status = statusCode[2]
 
     # return results
-    return ("{0}:{1} - {2}/{3}".format(action,service, p.stdout.readlines(),p.stderr.readlines()), success)
+    return ("{0}:{1} - {2}/{3}".format(action,service, sout, serr), status)

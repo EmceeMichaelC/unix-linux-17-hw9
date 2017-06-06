@@ -49,24 +49,27 @@ def serviceAction(service, action):
 
 def getResponse(action, service):
     ## make our service call ##
+    
     # call service_mgmt and obtain output and return code
     try:
-        (output, success) = service_mgmt(action=action, service=service)
+        (output, status) = service_mgmt(action=action, service=service)
     except Exception, err:
         # debug mode raise exception for stack trace visibility
         if app.debug:
             raise
         # set return values to failed if exception occurs
         output = "{0}".format(err)
-        success = False
+        status = 'error'
 
     ## format and send our response back to client ##
     # generate our response
-    resp = jsonify({'success': success, 'output': output})
+    resp = jsonify({'result': status, 'output': output})
 
-    # generate appropriate response code based on success
-    if success:
+    # generate appropriate response code based on status
+    if status == 'success':
         resp.status_code = 200
+    elif status == 'notfound':
+        resp.status_code = 404
     else:
         resp.status_code = 500
 
